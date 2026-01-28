@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\ColorController;
+use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\ProductStockController;
+use App\Http\Controllers\Admin\SizeController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -26,16 +31,31 @@ Route::middleware('auth')->group(function () {
 });
 
 
-Route::middleware(['auth', 'role:super_admin'])->group(function () {
 
+Route::prefix('admin')
+    ->name('admin.')
+    ->middleware(['auth'])
+    ->group(function () {
 
-    Route::prefix('admin')->group(function () {
+    // 1. Super Admin Routes
+    Route::middleware(['role:super_admin'])->group(function () {
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    });
 
+    // 2. Admin & Manager Routes
+    Route::middleware(['role:super_admin|store_manager'])->group(function () {
 
-        Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
-        Route::post('/users', [UserController::class, 'store'])->name('admin.users.store');
-        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
-        Route::put('/users/{user}', [UserController::class, 'update'])->name('admin.users.update');
+        // Categories
+        Route::resource('categories', CategoryController::class)->except(['create', 'edit', 'show']);
+        Route::resource('products', ProductController::class)->except(['create', 'edit', 'show']);
+        Route::resource('colors', ColorController::class)->except(['create', 'edit', 'show']);
+        Route::resource('sizes', SizeController::class)->except(['create', 'edit', 'show']);
+        Route::post('/products/{product}/stocks', [ProductStockController::class, 'store'])->name('products.stocks.store');
+        Route::delete('/stocks/{productStock}', [ProductStockController::class, 'destroy'])->name('products.stocks.destroy');
+        Route::delete('/products/stocks/bulk', [ProductStockController::class, 'bulkDestroy'])->name('products.stocks.bulk_destroy');
 
     });
 
