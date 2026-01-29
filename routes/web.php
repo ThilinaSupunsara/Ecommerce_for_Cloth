@@ -2,11 +2,14 @@
 
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ColorController;
+use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductStockController;
 use App\Http\Controllers\Admin\SizeController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ShopController;
@@ -32,14 +35,21 @@ Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
 Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+/*Route::middleware(['auth', 'verified'])->group(function () {
+
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+
+});*/
 
 Route::middleware('auth')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
+    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
 });
 
 
@@ -68,6 +78,12 @@ Route::prefix('admin')
         Route::post('/products/{product}/stocks', [ProductStockController::class, 'store'])->name('products.stocks.store');
         Route::delete('/stocks/{productStock}', [ProductStockController::class, 'destroy'])->name('products.stocks.destroy');
         Route::delete('/products/stocks/bulk', [ProductStockController::class, 'bulkDestroy'])->name('products.stocks.bulk_destroy');
+
+        Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+        Route::patch('/orders/{order}', [OrderController::class, 'update'])->name('orders.update');
+        Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     });
 

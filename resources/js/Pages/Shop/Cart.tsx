@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { PageProps } from '@/types';
+import PublicLayout from '@/Layouts/PublicLayout'; // 👈 Layout එක Import කළා
 
 // --- Types ---
 interface Color { name: string; code: string; }
@@ -34,18 +35,9 @@ export default function Cart({ cartItems, auth }: CartProps) {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        // 👇 Navbar එක Layout එකෙන් එනවා
+        <PublicLayout user={auth.user}>
             <Head title="Shopping Cart" />
-
-            {/* --- Navbar --- */}
-            <nav className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 items-center">
-                    <Link href="/" className="font-bold text-2xl text-indigo-600">CLOTHIFY</Link>
-                    <div className="flex space-x-4">
-                        <Link href={route('shop.index')} className="text-gray-600 hover:text-gray-900">Continue Shopping</Link>
-                    </div>
-                </div>
-            </nav>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
                 <h1 className="text-3xl font-bold text-gray-900 mb-8">Shopping Cart</h1>
@@ -148,12 +140,12 @@ export default function Cart({ cartItems, auth }: CartProps) {
                             </dl>
 
                             <div className="mt-6">
-                                <button
-                                    onClick={() => alert("Checkout page coming next!")}
-                                    className="w-full bg-indigo-600 border border-transparent rounded-md shadow-sm py-3 px-4 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-indigo-500"
+                                <Link
+                                    href={route('checkout.create')}
+                                    className="w-full bg-indigo-600 border border-transparent rounded-md shadow-sm py-3 px-4 text-base font-medium text-white hover:bg-indigo-700 block text-center"
                                 >
                                     Checkout
-                                </button>
+                                </Link>
                             </div>
                             <div className="mt-4 text-center">
                                 <p className="text-xs text-gray-500">Shipping and taxes calculated at checkout.</p>
@@ -162,6 +154,6 @@ export default function Cart({ cartItems, auth }: CartProps) {
                     </div>
                 )}
             </div>
-        </div>
+        </PublicLayout>
     );
 }
