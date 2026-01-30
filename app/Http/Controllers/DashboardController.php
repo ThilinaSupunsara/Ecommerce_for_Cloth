@@ -66,7 +66,7 @@ class DashboardController extends Controller
                 ->latest()
                 ->get();
 
-            return Inertia::render('MyAccount/Orders', [
+            return Inertia::render('Dashboard', [
                 'orders' => $orders
             ]);
         }

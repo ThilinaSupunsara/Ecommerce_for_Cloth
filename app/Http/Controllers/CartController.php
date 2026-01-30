@@ -103,4 +103,38 @@ class CartController extends Controller
 
         return $cart;
     }
+
+    public function applyCoupon(Request $request)
+    {
+        $request->validate([
+            'code' => 'required|string'
+        ]);
+
+        $coupon = \App\Models\Coupon::where('code', $request->code)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$coupon) {
+            return back()->withErrors(['coupon' => 'Invalid coupon code.']);
+        }
+
+        if ($coupon->expiry_date && $coupon->expiry_date < now()) {
+            return back()->withErrors(['coupon' => 'This coupon has expired.']);
+        }
+
+        // Store coupon in session
+        Session::put('coupon', [
+            'code' => $coupon->code,
+            'type' => $coupon->type,
+            'value' => $coupon->value
+        ]);
+
+        return back()->with('success', 'Coupon applied successfully!');
+    }
+
+    public function removeCoupon()
+    {
+        Session::forget('coupon');
+        return back()->with('success', 'Coupon removed.');
+    }
 }

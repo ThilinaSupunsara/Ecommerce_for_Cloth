@@ -1,6 +1,6 @@
 import React from 'react';
 import PublicLayout from '@/Layouts/PublicLayout'; // 👈 AuthenticatedLayout වෙනුවට මේක දැම්මා
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { PageProps } from '@/types';
 
 // Types
@@ -25,6 +25,55 @@ interface DashboardProps extends PageProps {
     orders: Order[];
 }
 
+// --- Order Progress Bar Component ---
+const OrderProgressBar = ({ status }: { status: string }) => {
+    const steps = ['pending', 'processing', 'shipped', 'completed'];
+    const currentStepIndex = steps.indexOf(status);
+
+    if (status === 'cancelled') {
+        return (
+            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 uppercase">
+                Cancelled
+            </span>
+        );
+    }
+
+    return (
+        <div className="w-full max-w-xs">
+            <div className="relative flex items-center justify-between">
+                {/* Background Line */}
+                <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 -z-10"></div>
+
+                {/* Active Line (Progress) */}
+                <div
+                    className="absolute left-0 top-1/2 transform -translate-y-1/2 h-1 bg-indigo-600 -z-10 transition-all duration-500"
+                    style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                ></div>
+
+                {steps.map((step, index) => {
+                    const isCompleted = index <= currentStepIndex;
+                    const isCurrent = index === currentStepIndex;
+
+                    return (
+                        <div key={step} className="flex flex-col items-center">
+                            <div className={`w-3 h-3 rounded-full flex items-center justify-center ${isCompleted ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+                                {isCompleted && (
+                                    <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                )}
+                            </div>
+                            <span className={`text-[10px] mt-1 capitalize ${isCurrent ? 'font-bold text-indigo-700' : 'text-gray-500'}`}>
+                                {step}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
 export default function Dashboard({ auth, orders }: DashboardProps) {
     return (
         // 👇 Customer නිසා PublicLayout එක පාවිච්චි කරනවා
@@ -34,9 +83,17 @@ export default function Dashboard({ auth, orders }: DashboardProps) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
                 {/* Header Section */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">My Account</h1>
-                    <p className="text-gray-500 mt-1">Welcome back, <strong>{auth.user.name}</strong>! 👋</p>
+                <div className="mb-8 flex justify-between items-end">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">My Account</h1>
+                        <p className="text-gray-500 mt-1">Welcome back, <strong>{auth.user.name}</strong>! 👋</p>
+                    </div>
+                    <Link
+                        href={route('profile.edit')}
+                        className="bg-white border border-gray-300 text-gray-700 font-medium py-2 px-4 rounded shadow-sm hover:bg-gray-50 transition"
+                    >
+                        Edit Profile
+                    </Link>
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
@@ -58,7 +115,7 @@ export default function Dashboard({ auth, orders }: DashboardProps) {
                                             <tr>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">Status</th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
                                             </tr>
@@ -73,12 +130,7 @@ export default function Dashboard({ auth, orders }: DashboardProps) {
                                                         {new Date(order.created_at).toLocaleDateString()}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full uppercase
-                                                            ${order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                                              order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                                              'bg-yellow-100 text-yellow-800'}`}>
-                                                            {order.status}
-                                                        </span>
+                                                        <OrderProgressBar status={order.status} />
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                                         Rs. {order.total_price}

@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductStockController;
 use App\Http\Controllers\Admin\SizeController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
@@ -34,7 +35,9 @@ Route::get('/products/{slug}', [ShopController::class, 'show'])->name('shop.show
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
-Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
+Route::post('/cart/coupon', [CartController::class, 'applyCoupon'])->name('cart.coupon.apply');
+Route::delete('/cart/coupon', [CartController::class, 'removeCoupon'])->name('cart.coupon.remove'); // Specific route first
+Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy'); // Wildcard route last
 
 /*Route::middleware(['auth', 'verified'])->group(function () {
 
@@ -54,6 +57,13 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
     Route::get('/checkout/cancel', [CheckoutController::class, 'cancel'])->name('checkout.cancel');
+    Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
+    Route::get('/checkout/cancel', [CheckoutController::class, 'cancel'])->name('checkout.cancel');
+
+    // Wishlist Routes
+    Route::get('/wishlist', [\App\Http\Controllers\WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist', [\App\Http\Controllers\WishlistController::class, 'store'])->name('wishlist.store');
+    Route::delete('/wishlist/{wishlist}', [\App\Http\Controllers\WishlistController::class, 'destroy'])->name('wishlist.destroy');
 });
 
 
@@ -92,6 +102,12 @@ Route::prefix('admin')
             Route::get('/reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
             Route::get('/reports/export/sales', [ReportController::class, 'exportSales'])->name('reports.export.sales');
             Route::get('/reports/export/orders', [ReportController::class, 'exportOrders'])->name('reports.export.orders');
+
+            // Coupons
+            Route::get('/coupons', [AdminCouponController::class, 'index'])->name('coupons.index');
+            Route::post('/coupons', [AdminCouponController::class, 'store'])->name('coupons.store');
+            Route::delete('/coupons/{coupon}', [AdminCouponController::class, 'destroy'])->name('coupons.destroy');
+            Route::post('/coupons/{coupon}/toggle', [AdminCouponController::class, 'toggleStatus'])->name('coupons.toggle');
 
             Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
