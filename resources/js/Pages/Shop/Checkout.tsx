@@ -31,7 +31,9 @@ interface CheckoutProps extends PageProps {
     auth: { user: any };
 }
 
-export default function Checkout({ cartItems, total, discount = 0, coupon, user, flash, auth }: CheckoutProps) {
+import axios from 'axios'; // Add axios
+
+export default function Checkout({ cartItems, total, user, flash, auth }: CheckoutProps) {
     const { data, setData, post, processing, errors } = useForm({
         first_name: user?.name?.split(' ')[0] || '',
         last_name: user?.name?.split(' ')[1] || '',
@@ -41,30 +43,60 @@ export default function Checkout({ cartItems, total, discount = 0, coupon, user,
         city: '',
         postal_code: '',
         payment_method: 'cod',
+        coupon_code: '', // Add coupon_code to form data
     });
 
-    // State for coupon input
-    const [couponCode, setCouponCode] = useState('');
+    // Local State for Coupon Visualization
+    const [couponCodeInput, setCouponCodeInput] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+    const [discountAmount, setDiscountAmount] = useState(0);
+    const [couponError, setCouponError] = useState('');
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         post(route('checkout.store'));
     };
 
-    const applyCoupon = () => {
-        if (!couponCode) return;
-        router.post(route('cart.coupon.apply'), { code: couponCode }, {
-            preserveScroll: true,
-        });
+    const applyCoupon = async () => {
+        if (!couponCodeInput) return;
+        setCouponError('');
+
+        try {
+            const response = await axios.post(route('checkout.validate_coupon'), { code: couponCodeInput });
+            const { valid, coupon, message } = response.data;
+
+            if (valid) {
+                setAppliedCoupon(coupon);
+
+                // Calculate Discount locally for display
+                let discount = 0;
+                if (coupon.type === 'fixed') {
+                    discount = parseFloat(coupon.value);
+                } else {
+                    discount = (total * parseFloat(coupon.value)) / 100;
+                }
+                setDiscountAmount(discount);
+
+                // Update Form Data
+                setData('coupon_code', coupon.code);
+            }
+        } catch (error: any) {
+            setCouponError(error.response?.data?.message || 'Invalid coupon.');
+            setAppliedCoupon(null);
+            setDiscountAmount(0);
+            setData('coupon_code', '');
+        }
     };
 
     const removeCoupon = () => {
-        router.delete(route('cart.coupon.remove'), {
-            preserveScroll: true,
-        });
+        setAppliedCoupon(null);
+        setDiscountAmount(0);
+        setData('coupon_code', '');
+        setCouponCodeInput('');
+        setCouponError('');
     };
 
-    const finalTotal = Math.max(0, total - discount);
+    const finalTotal = Math.max(0, total - discountAmount);
 
     // Fallback for user if undefined (though it should be protected by middleware)
     const currentUser = auth?.user || user;
@@ -180,10 +212,13 @@ export default function Checkout({ cartItems, total, discount = 0, coupon, user,
                         {/* Coupon Code Section */}
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                             <h2 className="text-sm font-medium text-gray-900 mb-4">Have a coupon?</h2>
-                            {coupon ? (
+                            {couponError && (
+                                <p className="text-red-500 text-sm mb-2">{couponError}</p>
+                            )}
+                            {appliedCoupon ? (
                                 <div className="flex justify-between items-center bg-green-50 p-3 rounded border border-green-200">
                                     <span className="text-green-700 font-medium">
-                                        Code <strong>{coupon.code}</strong> applied!
+                                        Code <strong>{appliedCoupon.code}</strong> applied!
                                     </span>
                                     <button
                                         type="button"
@@ -196,8 +231,8 @@ export default function Checkout({ cartItems, total, discount = 0, coupon, user,
                             ) : (
                                 <div className="flex space-x-2">
                                     <TextInput
-                                        value={couponCode}
-                                        onChange={(e) => setCouponCode(e.target.value)}
+                                        value={couponCodeInput}
+                                        onChange={(e) => setCouponCodeInput(e.target.value)}
                                         placeholder="Enter coupon code"
                                         className="flex-1"
                                     />
@@ -246,10 +281,10 @@ export default function Checkout({ cartItems, total, discount = 0, coupon, user,
                                     <dt className="text-gray-600">Subtotal</dt>
                                     <dd className="font-medium text-gray-900">Rs. {(total || 0).toFixed(2)}</dd>
                                 </div>
-                                {discount > 0 && (
+                                {discountAmount > 0 && (
                                     <div className="flex justify-between py-1 text-green-600">
                                         <dt>Discount</dt>
-                                        <dd className="font-medium">- Rs. {(typeof discount === 'string' ? parseFloat(discount) : discount).toFixed(2)}</dd>
+                                        <dd className="font-medium">- Rs. {(discountAmount).toFixed(2)}</dd>
                                     </div>
                                 )}
                                 <div className="flex justify-between py-1 border-t border-gray-200 mt-2 font-bold text-lg">

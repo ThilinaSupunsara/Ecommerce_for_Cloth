@@ -1,11 +1,14 @@
-import React from 'react';
-import PublicLayout from '@/Layouts/PublicLayout'; // 👈 AuthenticatedLayout වෙනුවට මේක දැම්මා
+import React, { useState } from 'react';
+import PublicLayout from '@/Layouts/PublicLayout';
 import { Head, Link } from '@inertiajs/react';
 import { PageProps } from '@/types';
+import ReviewForm from '@/Components/ReviewForm';
+import Modal from '@/Components/Modal';
 
 // Types
 interface OrderItem {
     id: number;
+    product_id: number; // Added product_id
     product_name: string;
     quantity: number;
     price: string;
@@ -138,8 +141,11 @@ export default function Dashboard({ auth, orders }: DashboardProps) {
                                                     <td className="px-6 py-4 text-sm text-gray-500">
                                                         <ul className="list-disc list-inside">
                                                             {order.items.map((item) => (
-                                                                <li key={item.id}>
-                                                                    {item.product_name} ({item.color_name}, {item.size_name}) x {item.quantity}
+                                                                <li key={item.id} className="flex justify-between items-center mb-2">
+                                                                    <span>{item.product_name} ({item.color_name}, {item.size_name}) x {item.quantity}</span>
+                                                                    {order.status === 'completed' && (
+                                                                        <ReviewButton productId={item.product_id} />
+                                                                    )}
                                                                 </li>
                                                             ))}
                                                         </ul>
@@ -157,3 +163,31 @@ export default function Dashboard({ auth, orders }: DashboardProps) {
         </PublicLayout>
     );
 }
+
+const ReviewButton = ({ productId }: { productId: number }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <>
+            <button
+                onClick={() => setIsOpen(true)}
+                className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 ml-2"
+            >
+                Rate Product
+            </button>
+
+            <Modal show={isOpen} onClose={() => setIsOpen(false)}>
+                <div className="p-6">
+                    <h3 className="text-lg font-bold mb-4 text-gray-900">Write a Review</h3>
+                    <ReviewForm productId={productId} onSuccess={() => setIsOpen(false)} />
+                    <button
+                        onClick={() => setIsOpen(false)}
+                        className="mt-4 text-sm text-gray-500 hover:text-gray-700 underline"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </Modal>
+        </>
+    );
+};

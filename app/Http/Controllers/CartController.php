@@ -21,6 +21,18 @@ class CartController extends Controller
             return Inertia::render('Shop/Cart', ['cartItems' => []]);
         }
 
+        // --- UPDATE PRICES FOR FLASH SALE ---
+        $flashSale = \App\Models\FlashSale::active()->first();
+        $itemsToUpdate = $cart->items()->with(['product', 'stock'])->get();
+
+        foreach ($itemsToUpdate as $item) {
+            $currentPrice = $this->calculateCurrentPrice($item->product, $item->stock, $flashSale);
+            if ($item->price != $currentPrice) {
+                $item->price = $currentPrice;
+                $item->save();
+            }
+        }
+        // ------------------------------------
 
         $cartItems = $cart->items()->with(['product', 'stock.color', 'stock.size'])->get();
 
@@ -55,6 +67,9 @@ class CartController extends Controller
 
 
         $cart = $this->getCart(true);
+        $product = Product::find($request->product_id);
+        $flashSale = \App\Models\FlashSale::active()->first();
+        $finalPrice = $this->calculateCurrentPrice($product, $stock, $flashSale);
 
 
         $existingItem = $cart->items()->where('product_stock_id', $stock->id)->first();
@@ -62,6 +77,7 @@ class CartController extends Controller
         if ($existingItem) {
 
             $existingItem->quantity += $request->quantity;
+            $existingItem->price = $finalPrice; // Update price
             $existingItem->save();
         } else {
 
@@ -69,7 +85,7 @@ class CartController extends Controller
                 'product_id' => $request->product_id,
                 'product_stock_id' => $stock->id,
                 'quantity' => $request->quantity,
-                'price' => $stock->price ?? Product::find($request->product_id)->base_price,
+                'price' => $finalPrice,
             ]);
         }
 
@@ -92,6 +108,7 @@ class CartController extends Controller
             $cart = Cart::where('user_id', $user->id)->first();
             if (!$cart && $createInfo) {
                 $cart = Cart::create(['user_id' => $user->id]);
+                // If user had a session cart, merge it? (Optional, skipping for now)
             }
         } else {
             $sessionId = Session::getId();
@@ -102,6 +119,18 @@ class CartController extends Controller
         }
 
         return $cart;
+    }
+
+    private function calculateCurrentPrice($product, $stock, $flashSale)
+    {
+        $basePrice = $stock->price ?? $product->base_price;
+
+        if ($flashSale) {
+            $discount = ($basePrice * $flashSale->discount_percentage) / 100;
+            return round($basePrice - $discount, 2);
+        }
+
+        return $basePrice;
     }
 
     public function applyCoupon(Request $request)

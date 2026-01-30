@@ -26,6 +26,7 @@ interface Product {
     name: string;
     slug: string;
     base_price: string;
+    selling_price: string; // Added selling_price
     image: string | null;
     category?: Category;
 }
@@ -220,7 +221,7 @@ export default function ShopIndex({ products, categories, sizes, colors, filters
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {products.data.map((product) => (
                                     <div key={product.id} className="group relative bg-white border border-gray-100 rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                                        <div className="w-full h-64 bg-gray-200 aspect-w-1 aspect-h-1 overflow-hidden group-hover:opacity-90">
+                                        <div className="w-full h-64 bg-gray-200 aspect-w-1 aspect-h-1 overflow-hidden group-hover:opacity-90 relative">
                                             <Link href={route('shop.show', product.slug)}>
                                                 {product.image ? (
                                                     <img
@@ -234,6 +235,13 @@ export default function ShopIndex({ products, categories, sizes, colors, filters
                                                     </div>
                                                 )}
                                             </Link>
+
+                                            {/* Sale Badge */}
+                                            {Number(product.selling_price) < Number(product.base_price) && (
+                                                <span className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">
+                                                    SALE
+                                                </span>
+                                            )}
 
                                             {/* Wishlist Button Overlay */}
                                             <button
@@ -258,8 +266,18 @@ export default function ShopIndex({ products, categories, sizes, colors, filters
                                             </h3>
                                             <p className="mt-1 text-sm text-gray-500">{product.category?.name}</p>
                                             <div className="mt-2 flex items-center justify-between">
-                                                <p className="text-lg font-bold text-gray-900">Rs. {product.base_price}</p>
-                                                <Link href={route('shop.show', product.slug)} className="text-sm text-indigo-600 font-medium">View Details &rarr;</Link>
+                                                <div>
+                                                    {Number(product.selling_price) < Number(product.base_price) ? (
+                                                        <>
+                                                            <span className="text-lg font-bold text-red-600 sr-only">Sale Price: </span>
+                                                            <span className="text-lg font-bold text-red-600">Rs. {product.selling_price}</span>
+                                                            <span className="ml-2 text-sm text-gray-500 line-through">Rs. {product.base_price}</span>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-lg font-bold text-gray-900">Rs. {product.base_price}</span>
+                                                    )}
+                                                </div>
+                                                <Link href={route('shop.show', product.slug)} className="text-sm text-indigo-600 font-medium">View &rarr;</Link>
                                             </div>
                                         </div>
                                     </div>

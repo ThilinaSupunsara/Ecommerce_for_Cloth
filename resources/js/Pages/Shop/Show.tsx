@@ -9,20 +9,25 @@ interface Stock {
     id: number; color: Color; size: Size; quantity: number; price: string | null;
 }
 interface ProductImage { id: number; image_path: string; }
+interface Review { id: number; user: { name: string }; rating: number; comment: string; created_at: string; }
 interface Product {
-    id: number; name: string; slug: string; base_price: string; description: string;
+    id: number; name: string; slug: string;
+    base_price: string; selling_price: number; sale_percentage: number; // Added new props
+    description: string;
     image: string | null; category?: { name: string; slug: string };
     images: ProductImage[];
     stocks: Stock[];
+    reviews: Review[];
 }
 
 interface Props extends PageProps {
     product: Product;
     relatedProducts: Product[];
     auth: { user: any };
+    hasPurchased: boolean;
 }
 
-export default function ProductShow({ product, relatedProducts, auth }: Props) {
+export default function ProductShow({ product, relatedProducts, auth, hasPurchased }: Props) {
     // States
     const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
     const [selectedSizeId, setSelectedSizeId] = useState<number | null>(null);
@@ -38,7 +43,14 @@ export default function ProductShow({ product, relatedProducts, auth }: Props) {
 
     // Logic: අවසාන Price එක (සමහර විට පාට/සයිස් අනුව මිල වෙනස් වෙන්න පුළුවන්)
     const currentStock = product.stocks.find(s => s.color.id === selectedColorId && s.size.id === selectedSizeId);
-    const finalPrice = currentStock?.price ? currentStock.price : product.base_price;
+    const baseFinalPrice = currentStock?.price ? Number(currentStock.price) : Number(product.base_price);
+
+    // Apply Flash Sale Discount if active
+    const isSaleActive = product.sale_percentage > 0;
+    const finalPrice = isSaleActive
+        ? (baseFinalPrice - (baseFinalPrice * product.sale_percentage / 100)).toFixed(2)
+        : baseFinalPrice.toFixed(2);
+
     const maxQty = currentStock ? currentStock.quantity : 0;
 
     const { data, setData, post, processing } = useForm({
@@ -139,9 +151,21 @@ export default function ProductShow({ product, relatedProducts, auth }: Props) {
                             <h1 className="text-3xl font-extrabold text-gray-900 mb-4">{product.name}</h1>
 
                             {/* Price */}
-                            <p className="text-2xl font-bold text-gray-900 mb-6">
-                                Rs. {finalPrice}
-                            </p>
+                            <div className="mb-6">
+                                {isSaleActive ? (
+                                    <div className="flex items-center gap-3">
+                                        <p className="text-3xl font-bold text-red-600">Rs. {finalPrice}</p>
+                                        <p className="text-xl text-gray-400 line-through">Rs. {baseFinalPrice.toFixed(2)}</p>
+                                        <span className="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded">
+                                            {product.sale_percentage}% OFF
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <p className="text-2xl font-bold text-gray-900">
+                                        Rs. {finalPrice}
+                                    </p>
+                                )}
+                            </div>
 
                             {/* Description */}
                             <div className="prose prose-sm text-gray-500 mb-8">
@@ -158,9 +182,8 @@ export default function ProductShow({ product, relatedProducts, auth }: Props) {
                                         <button
                                             key={color.id}
                                             onClick={() => setSelectedColorId(color.id)}
-                                            className={`relative w-10 h-10 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-                                                selectedColorId === color.id ? 'ring-2 ring-offset-2 ring-indigo-500' : 'border border-gray-200'
-                                            }`}
+                                            className={`relative w-10 h-10 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${selectedColorId === color.id ? 'ring-2 ring-offset-2 ring-indigo-500' : 'border border-gray-200'
+                                                }`}
                                             style={{ backgroundColor: color.code }}
                                             title={color.name}
                                         />
@@ -204,13 +227,12 @@ export default function ProductShow({ product, relatedProducts, auth }: Props) {
                             {/* --- Add to Cart Button --- */}
                             <div className="flex gap-4">
                                 <button
-                                    className={`w-full flex items-center justify-center rounded-md border border-transparent px-8 py-3 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                                        selectedColorId && selectedSizeId
+                                    className={`w-full flex items-center justify-center rounded-md border border-transparent px-8 py-3 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${selectedColorId && selectedSizeId
                                         ? 'bg-indigo-600 hover:bg-indigo-700'
                                         : 'bg-gray-400 cursor-not-allowed'
-                                    }`}
+                                        }`}
                                     disabled={!selectedColorId || !selectedSizeId || processing} // processing වෙනකොට disable කරනවා
-                                    onClick={addToCart} 
+                                    onClick={addToCart}
                                 >
                                     {processing ? 'Adding...' : 'Add to Cart'}
                                 </button>
@@ -221,6 +243,37 @@ export default function ProductShow({ product, relatedProducts, auth }: Props) {
                                 </p>
                             )}
                         </div>
+                    </div>
+                </div>
+
+                {/* --- Reviews Section --- */}
+                <div className="mt-16 bg-white rounded-xl shadow-lg p-8">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Customer Reviews</h2>
+
+                    {/* Review List */}
+                    <div className="space-y-8">
+                        {product.reviews && product.reviews.length > 0 ? (
+                            product.reviews.map((review) => (
+                                <div key={review.id} className="border-b border-gray-100 pb-8 last:border-0 last:pb-0">
+                                    <div className="flex items-center mb-2">
+                                        <div className="font-semibold text-gray-900 mr-2">{review.user.name}</div>
+                                        <span className="text-xs text-gray-500">{new Date(review.created_at).toLocaleDateString()}</span>
+                                    </div>
+                                    <div className="flex items-center mb-3">
+                                        <div className="flex text-yellow-400">
+                                            {[...Array(5)].map((_, i) => (
+                                                <svg key={i} className={`h-5 w-5 ${i < review.rating ? 'fill-current' : 'text-gray-300'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                </svg>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <p className="text-gray-600">{review.comment}</p>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-gray-500">No reviews yet. Be the first to review!</p>
+                        )}
                     </div>
                 </div>
 
@@ -249,3 +302,5 @@ export default function ProductShow({ product, relatedProducts, auth }: Props) {
         </div>
     );
 }
+
+

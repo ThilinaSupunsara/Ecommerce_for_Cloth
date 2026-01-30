@@ -75,8 +75,16 @@ class ShopController extends Controller
 
     public function show($slug)
     {
-        // Product එක හොයාගන්නවා (Images සහ Stocks එක්ක)
-        $product = Product::with(['category', 'images', 'stocks.color', 'stocks.size'])
+        // Product එක හොයාගන්නවා (Images, Stocks, Reviews එක්ක)
+        $product = Product::with([
+            'category',
+            'images',
+            'stocks.color',
+            'stocks.size',
+            'reviews.user' => function ($q) {
+                $q->latest();
+            }
+        ])
             ->where('slug', $slug)
             ->where('is_active', true)
             ->firstOrFail();
@@ -88,9 +96,21 @@ class ShopController extends Controller
             ->take(4)
             ->get();
 
+        // Check if user has purchased this product and order is completed
+        $hasPurchased = false;
+        if (auth()->check()) {
+            $hasPurchased = \App\Models\Order::where('user_id', auth()->id())
+                ->where('status', 'completed') // Only completed orders
+                ->whereHas('items', function ($query) use ($product) {
+                    $query->where('product_id', $product->id);
+                })
+                ->exists();
+        }
+
         return Inertia::render('Shop/Show', [
             'product' => $product,
-            'relatedProducts' => $relatedProducts
+            'relatedProducts' => $relatedProducts,
+            'hasPurchased' => $hasPurchased
         ]);
     }
 }

@@ -59,6 +59,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/checkout/cancel', [CheckoutController::class, 'cancel'])->name('checkout.cancel');
     Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
     Route::get('/checkout/cancel', [CheckoutController::class, 'cancel'])->name('checkout.cancel');
+    Route::post('/checkout/validate-coupon', [CheckoutController::class, 'validateCoupon'])->name('checkout.validate_coupon');
+
+    Route::post('/products/{product}/reviews', [\App\Http\Controllers\ProductReviewController::class, 'store'])->name('products.reviews.store');
 
     // Wishlist Routes
     Route::get('/wishlist', [\App\Http\Controllers\WishlistController::class, 'index'])->name('wishlist.index');
@@ -108,6 +111,16 @@ Route::prefix('admin')
             Route::post('/coupons', [AdminCouponController::class, 'store'])->name('coupons.store');
             Route::delete('/coupons/{coupon}', [AdminCouponController::class, 'destroy'])->name('coupons.destroy');
             Route::post('/coupons/{coupon}/toggle', [AdminCouponController::class, 'toggleStatus'])->name('coupons.toggle');
+
+            // Flash Sales
+            Route::get('/flash-sales', [\App\Http\Controllers\Admin\FlashSaleController::class, 'index'])->name('flash_sales.index');
+            Route::post('/flash-sales', [\App\Http\Controllers\Admin\FlashSaleController::class, 'store'])->name('flash_sales.store');
+            Route::put('/flash-sales/{flashSale}', [\App\Http\Controllers\Admin\FlashSaleController::class, 'update'])->name('flash_sales.update');
+            Route::delete('/flash-sales/{flashSale}', [\App\Http\Controllers\Admin\FlashSaleController::class, 'destroy'])->name('flash_sales.destroy');
+            Route::post('/flash-sales/{flashSale}/toggle', [\App\Http\Controllers\Admin\FlashSaleController::class, 'toggle'])->name('flash_sales.toggle');
+
+            // Notifications
+            Route::get('/notifications/{id}/read', [\App\Http\Controllers\Admin\NotificationController::class, 'markAsRead'])->name('notifications.read');
 
             Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 

@@ -33,23 +33,41 @@ class CheckoutController extends Controller
             return $item->price * $item->quantity;
         });
 
-        // Check for coupon in session
-        $coupon = session('coupon');
-        $discount = 0;
-        if ($coupon) {
-            if ($coupon['type'] == 'fixed') {
-                $discount = (float) $coupon['value'];
-            } else {
-                $discount = ($total * $coupon['value']) / 100;
-            }
-        }
+        // No session coupon usage here anymore
+        // $coupon = session('coupon'); ...
 
         return Inertia::render('Shop/Checkout', [
             'cartItems' => $cartItems,
             'total' => $total,
-            'discount' => $discount, // Pass discount to view
-            'coupon' => $coupon,     // Pass coupon details to view
             'user' => Auth::user()
+        ]);
+    }
+
+    // New Method: Validate Coupon (Returns JSON)
+    public function validateCoupon(Request $request)
+    {
+        $request->validate(['code' => 'required|string']);
+
+        $coupon = \App\Models\Coupon::where('code', $request->code)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$coupon) {
+            return response()->json(['valid' => false, 'message' => 'Invalid coupon code.'], 422);
+        }
+
+        if ($coupon->expiry_date && $coupon->expiry_date < now()) {
+            return response()->json(['valid' => false, 'message' => 'This coupon has expired.'], 422);
+        }
+
+        return response()->json([
+            'valid' => true,
+            'coupon' => [
+                'code' => $coupon->code,
+                'type' => $coupon->type,
+                'value' => $coupon->value
+            ],
+            'message' => 'Coupon applied!'
         ]);
     }
 
@@ -65,10 +83,11 @@ class CheckoutController extends Controller
             'city' => 'required|string',
             'postal_code' => 'nullable|string',
             'payment_method' => 'required|in:cod,card',
+            'coupon_code' => 'nullable|string|exists:coupons,code', // Validate coupon if present
         ]);
 
         try {
-            // $stripeSessionUrl variable එක හදාගන්නවා (Card payment එකක් නම් පසුව පාවිච්චි කරන්න)
+            // $stripeSessionUrl variable එක හදාගන්නවා
             $stripeSessionUrl = null;
 
             DB::transaction(function () use ($request, &$stripeSessionUrl) {
@@ -86,20 +105,26 @@ class CheckoutController extends Controller
                     return $item->price * $item->quantity;
                 });
 
-                $coupon = session('coupon');
                 $discountAmount = 0;
                 $couponCode = null;
 
-                if ($coupon) {
-                    // Validate coupon validity again (Optional but recommended)
-                    // For simplicity using session data, but in production re-check DB
-                    if ($coupon['type'] == 'fixed') {
-                        $discountAmount = $coupon['value'];
-                    } else {
-                        $discountAmount = ($subTotal * $coupon['value']) / 100;
+                // Handle Coupon from Request (Stateless)
+                if ($request->coupon_code) {
+                    $coupon = \App\Models\Coupon::where('code', $request->coupon_code)
+                        ->where('is_active', true)
+                        ->first();
+
+                    if ($coupon && (!$coupon->expiry_date || $coupon->expiry_date >= now())) {
+                        if ($coupon->type == 'fixed') {
+                            $discountAmount = $coupon->value;
+                        } else {
+                            $discountAmount = ($subTotal * $coupon->value) / 100;
+                        }
+                        $couponCode = $coupon->code;
                     }
-                    $couponCode = $coupon['code'];
                 }
+
+                // ... rest of calculation ...
 
                 $finalTotal = max(0, $subTotal - $discountAmount);
 
@@ -190,6 +215,15 @@ class CheckoutController extends Controller
                         Mail::to($request->email)->send(new OrderPlaced($order));
                     } catch (\Exception $e) {
                         // Email අවුල් ගියත් Order එක නවත්තන්න එපා
+                    }
+
+                    // --- Send Admin Notification ---
+                    try {
+                        // Find Admins & Managers
+                        $admins = \App\Models\User::role(['super_admin', 'store_manager'])->get();
+                        \Illuminate\Support\Facades\Notification::send($admins, new \App\Notifications\NewOrderReceived($order));
+                    } catch (\Exception $e) {
+                        // Ignore notification errors
                     }
                 }
 
