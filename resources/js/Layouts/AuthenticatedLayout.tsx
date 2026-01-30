@@ -28,9 +28,8 @@ export default function Authenticated({
                     {/* Dashboard Link */}
                     <Link
                         href={route('admin.dashboard')}
-                        className={`block px-4 py-2 rounded transition ${
-                            route().current('admin.dashboard') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                        }`}
+                        className={`block px-4 py-2 rounded transition ${route().current('admin.dashboard') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                            }`}
                     >
                         Dashboard
                     </Link>
@@ -38,9 +37,8 @@ export default function Authenticated({
                     {/* Orders Link */}
                     <Link
                         href={route('admin.orders.index')}
-                        className={`block px-4 py-2 rounded transition ${
-                            route().current('admin.orders.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                        }`}
+                        className={`block px-4 py-2 rounded transition ${route().current('admin.orders.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                            }`}
                     >
                         Orders Management
                     </Link>
@@ -48,11 +46,19 @@ export default function Authenticated({
                     {/* Products Link */}
                     <Link
                         href={route('admin.products.index')}
-                        className={`block px-4 py-2 rounded transition ${
-                            route().current('admin.products.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                        }`}
+                        className={`block px-4 py-2 rounded transition ${route().current('admin.products.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                            }`}
                     >
                         Products
+                    </Link>
+
+                    {/* Reports Link */}
+                    <Link
+                        href={route('admin.reports.index')}
+                        className={`block px-4 py-2 rounded transition ${route().current('admin.reports.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                            }`}
+                    >
+                        Reports & Exports
                     </Link>
 
                     {/* Divider & Shop Link */}

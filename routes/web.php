@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductStockController;
 use App\Http\Controllers\Admin\SizeController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
@@ -62,34 +63,40 @@ Route::prefix('admin')
     ->middleware(['auth'])
     ->group(function () {
 
-    // 1. Super Admin Routes
-    Route::middleware(['role:super_admin'])->group(function () {
-        Route::get('/users', [UserController::class, 'index'])->name('users.index');
-        Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
-        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        // 1. Super Admin Routes
+        Route::middleware(['role:super_admin'])->group(function () {
+            Route::get('/users', [UserController::class, 'index'])->name('users.index');
+            Route::post('/users', [UserController::class, 'store'])->name('users.store');
+            Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+            Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        });
+
+        // 2. Admin & Manager Routes
+        Route::middleware(['role:super_admin|store_manager'])->group(function () {
+
+            // Categories
+            Route::resource('categories', CategoryController::class)->except(['create', 'edit', 'show']);
+            Route::resource('products', ProductController::class)->except(['create', 'edit', 'show']);
+            Route::resource('colors', ColorController::class)->except(['create', 'edit', 'show']);
+            Route::resource('sizes', SizeController::class)->except(['create', 'edit', 'show']);
+            Route::post('/products/{product}/stocks', [ProductStockController::class, 'store'])->name('products.stocks.store');
+            Route::delete('/stocks/{productStock}', [ProductStockController::class, 'destroy'])->name('products.stocks.destroy');
+            Route::delete('/products/stocks/bulk', [ProductStockController::class, 'bulkDestroy'])->name('products.stocks.bulk_destroy');
+
+            Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+            Route::patch('/orders/{order}', [OrderController::class, 'update'])->name('orders.update');
+            Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+
+            // Reports
+            Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+            Route::get('/reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
+            Route::get('/reports/export/sales', [ReportController::class, 'exportSales'])->name('reports.export.sales');
+            Route::get('/reports/export/orders', [ReportController::class, 'exportOrders'])->name('reports.export.orders');
+
+            Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+        });
+
     });
 
-    // 2. Admin & Manager Routes
-    Route::middleware(['role:super_admin|store_manager'])->group(function () {
-
-        // Categories
-        Route::resource('categories', CategoryController::class)->except(['create', 'edit', 'show']);
-        Route::resource('products', ProductController::class)->except(['create', 'edit', 'show']);
-        Route::resource('colors', ColorController::class)->except(['create', 'edit', 'show']);
-        Route::resource('sizes', SizeController::class)->except(['create', 'edit', 'show']);
-        Route::post('/products/{product}/stocks', [ProductStockController::class, 'store'])->name('products.stocks.store');
-        Route::delete('/stocks/{productStock}', [ProductStockController::class, 'destroy'])->name('products.stocks.destroy');
-        Route::delete('/products/stocks/bulk', [ProductStockController::class, 'bulkDestroy'])->name('products.stocks.bulk_destroy');
-
-        Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-        Route::patch('/orders/{order}', [OrderController::class, 'update'])->name('orders.update');
-        Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
-
-        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    });
-
-});
-
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
