@@ -3,6 +3,9 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import Modal from '@/Components/Modal';
+import SecondaryButton from '@/Components/SecondaryButton';
+import DangerButton from '@/Components/DangerButton';
+import PrimaryButton from '@/Components/PrimaryButton';
 
 interface FlashSale {
     id: number;
@@ -20,7 +23,9 @@ interface Props extends PageProps {
 
 export default function FlashSalesIndex({ auth, flashSales, products }: Props) {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState(''); // New State for Search
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [saleToDelete, setSaleToDelete] = useState<number | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Computed Filtered Products
     const filteredProducts = products.filter(product =>
@@ -50,15 +55,24 @@ export default function FlashSalesIndex({ auth, flashSales, products }: Props) {
         router.post(route('admin.flash_sales.toggle', id));
     };
 
-    const deleteSale = (id: number) => {
-        if (confirm('Are you sure you want to delete this sale?')) {
-            router.delete(route('admin.flash_sales.destroy', id));
+    const confirmDelete = (id: number) => {
+        setSaleToDelete(id);
+        setShowDeleteModal(true);
+    };
+
+    const deleteSale = () => {
+        if (saleToDelete) {
+            router.delete(route('admin.flash_sales.destroy', saleToDelete), {
+                onSuccess: () => {
+                    setShowDeleteModal(false);
+                    setSaleToDelete(null);
+                }
+            });
         }
     };
 
     return (
         <AuthenticatedLayout
-
             header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Flash Sales</h2>}
         >
             <Head title="Manage Flash Sales" />
@@ -105,7 +119,7 @@ export default function FlashSalesIndex({ auth, flashSales, products }: Props) {
                                                 </button>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button onClick={() => deleteSale(sale.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                                                <button onClick={() => confirmDelete(sale.id)} className="text-red-600 hover:text-red-900">Delete</button>
                                             </td>
                                         </tr>
                                     ))}
@@ -249,22 +263,24 @@ export default function FlashSalesIndex({ auth, flashSales, products }: Props) {
                         </div>
 
                         <div className="flex justify-end mt-6">
-                            <button
-                                type="button"
-                                onClick={() => setIsCreateModalOpen(false)}
-                                className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 mr-2"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                            >
-                                {processing ? 'Creating...' : 'Create Sale'}
-                            </button>
+                            <SecondaryButton onClick={() => setIsCreateModalOpen(false)} className="mr-3">Cancel</SecondaryButton>
+                            <PrimaryButton disabled={processing}>{processing ? 'Creating...' : 'Create Sale'}</PrimaryButton>
                         </div>
                     </form>
+                </div>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900">Delete Flash Sale?</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Are you sure you want to delete this sale? This action cannot be undone.
+                    </p>
+                    <div className="mt-6 flex justify-end">
+                        <SecondaryButton onClick={() => setShowDeleteModal(false)}>Cancel</SecondaryButton>
+                        <DangerButton className="ml-3" onClick={deleteSale}>Delete</DangerButton>
+                    </div>
                 </div>
             </Modal>
         </AuthenticatedLayout>

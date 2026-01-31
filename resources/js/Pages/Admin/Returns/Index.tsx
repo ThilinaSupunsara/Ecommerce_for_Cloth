@@ -1,8 +1,11 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, router } from '@inertiajs/react'; // Add router import
+import { Head, useForm, router } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import Modal from '@/Components/Modal';
 import { useState } from 'react';
+import SecondaryButton from '@/Components/SecondaryButton';
+import DangerButton from '@/Components/DangerButton';
+import PrimaryButton from '@/Components/PrimaryButton';
 
 interface ReturnRequest {
     id: number;
@@ -13,7 +16,7 @@ interface ReturnRequest {
     admin_response: string | null;
     created_at: string;
     order_stripe_payment_id?: string;
-    order?: { stripe_payment_id: string | null }; // Add nested order object
+    order?: { stripe_payment_id: string | null };
 }
 
 interface IndexProps extends PageProps {
@@ -100,7 +103,12 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 const ActionButtons = ({ request }: { request: ReturnRequest }) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+    const [isRefundModalOpen, setIsRefundModalOpen] = useState(false); // Separate Refund Modal
+    const [statusConfirmState, setStatusConfirmState] = useState<string | null>(null); // To confirm status change inside modal if needed, or we can just do it direct since it's inside a Manage modal already? 
+    // Actually the user logic was: open modal -> fill form -> click update -> if status changed, confirm -> then submit.
+    // Let's implement that flow.
+
     const { data, setData, put, processing, reset } = useForm({
         status: request.status,
         admin_response: request.admin_response || '',
@@ -108,15 +116,46 @@ const ActionButtons = ({ request }: { request: ReturnRequest }) => {
 
     const updateStatus = (e: React.FormEvent) => {
         e.preventDefault();
+        // If status changed, we show a refined confirmation or just proceed? 
+        // The original code had a confirm() dialog.
+        // Let's use a "soft" confirmation state variable to show a warning within the modal or trigger another modal?
+        // Triggering a second modal on top might be complex for this simple UI.
+        // Let's just ask for confirmation using a javascript check? No, we need to avoid native confirm.
+
+        // Better UX: simpler "Update" button, if acceptable. 
+        // But requested to replace confirm().
+
+        // Let's just proceed with update. The "Manage" modal itself acts as a confirmation of intent.
+        // But if risk is high (like Reject), maybe? 
+        // Let's assume standard behavior since it's a form now.
+
+        // WAIT: The original code explicitly had: if (data.status !== request.status) if (!confirm(...)) return;
+        // So I should probably check that.
 
         if (data.status !== request.status) {
-            if (!confirm(`Are you sure you want to change status to "${data.status}"?`)) {
-                return;
-            }
+            setStatusConfirmState(data.status); // Open confirmation overlay/modal
+            return;
         }
 
+        submitUpdate();
+    };
+
+    const submitUpdate = () => {
         put(route('admin.returns.update', request.id), {
-            onSuccess: () => setIsModalOpen(false),
+            onSuccess: () => {
+                setIsManageModalOpen(false);
+                setStatusConfirmState(null);
+            },
+        });
+    };
+
+    const handleRefundClick = () => {
+        setIsRefundModalOpen(true);
+    };
+
+    const processRefund = () => {
+        router.post(route('admin.returns.refund', request.id), {}, {
+            onSuccess: () => setIsRefundModalOpen(false)
         });
     };
 
@@ -124,7 +163,7 @@ const ActionButtons = ({ request }: { request: ReturnRequest }) => {
         <>
             <div className="flex space-x-2">
                 <button
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={() => setIsManageModalOpen(true)}
                     className="text-indigo-600 hover:text-indigo-900"
                 >
                     Manage
@@ -132,11 +171,7 @@ const ActionButtons = ({ request }: { request: ReturnRequest }) => {
 
                 {request.status === 'approved' && request.order?.stripe_payment_id && (
                     <button
-                        onClick={() => {
-                            if (confirm('Process Stripe Refund? This cannot be undone.')) {
-                                router.post(route('admin.returns.refund', request.id));
-                            }
-                        }}
+                        onClick={handleRefundClick}
                         className="text-red-600 hover:text-red-900 text-xs border border-red-200 px-2 py-1 rounded"
                     >
                         Refund (Stripe)
@@ -144,7 +179,8 @@ const ActionButtons = ({ request }: { request: ReturnRequest }) => {
                 )}
             </div>
 
-            <Modal show={isModalOpen} onClose={() => setIsModalOpen(false)}>
+            {/* Manage Modal */}
+            <Modal show={isManageModalOpen} onClose={() => setIsManageModalOpen(false)}>
                 <div className="p-6">
                     <h3 className="text-lg font-bold mb-4 text-gray-900">Manage Return Request #{request.id}</h3>
 
@@ -180,22 +216,38 @@ const ActionButtons = ({ request }: { request: ReturnRequest }) => {
                         </div>
 
                         <div className="flex justify-end space-x-2">
-                            <button
-                                type="button"
-                                onClick={() => setIsModalOpen(false)}
-                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition text-sm"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition text-sm"
-                            >
-                                {processing ? 'Updating...' : 'Update Status'}
-                            </button>
+                            <SecondaryButton onClick={() => setIsManageModalOpen(false)}>Cancel</SecondaryButton>
+                            <PrimaryButton disabled={processing}>Update Status</PrimaryButton>
                         </div>
                     </form>
+                </div>
+            </Modal>
+
+            {/* Status Change Confirmation (Double Check) */}
+            <Modal show={statusConfirmState !== null} onClose={() => setStatusConfirmState(null)}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900">Confirm Status Change</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Are you sure you want to change the status from <strong>{request.status}</strong> to <strong>{statusConfirmState}</strong>?
+                    </p>
+                    <div className="mt-6 flex justify-end">
+                        <SecondaryButton onClick={() => setStatusConfirmState(null)}>No, Cancel</SecondaryButton>
+                        <PrimaryButton className="ml-3" onClick={submitUpdate}>Yes, Update</PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Refund Confirmation Modal */}
+            <Modal show={isRefundModalOpen} onClose={() => setIsRefundModalOpen(false)}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900">Process Refund?</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Are you sure you want to process a refund via Stripe? <span className="text-red-600 font-bold">This cannot be undone.</span>
+                    </p>
+                    <div className="mt-6 flex justify-end">
+                        <SecondaryButton onClick={() => setIsRefundModalOpen(false)}>Cancel</SecondaryButton>
+                        <DangerButton className="ml-3" onClick={processRefund}>Refund (Stripe)</DangerButton>
+                    </div>
                 </div>
             </Modal>
         </>

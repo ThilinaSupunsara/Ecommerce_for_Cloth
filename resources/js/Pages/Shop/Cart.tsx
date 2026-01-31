@@ -1,7 +1,10 @@
-import React from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, Link, router } from '@inertiajs/react'; // Import useState
 import { PageProps } from '@/types';
-import PublicLayout from '@/Layouts/PublicLayout'; // 👈 Layout එක Import කළා
+import PublicLayout from '@/Layouts/PublicLayout';
+import Modal from '@/Components/Modal'; // Import UI Components
+import SecondaryButton from '@/Components/SecondaryButton';
+import DangerButton from '@/Components/DangerButton';
 
 // --- Types ---
 interface Color { name: string; code: string; }
@@ -12,7 +15,7 @@ interface Product { name: string; slug: string; image: string | null; }
 interface CartItem {
     id: number;
     quantity: number;
-    price: string; // String because decimal comes as string from DB usually
+    price: string;
     product: Product;
     stock: Stock;
 }
@@ -23,19 +26,30 @@ interface CartProps extends PageProps {
 }
 
 export default function Cart({ cartItems, auth }: CartProps) {
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
     // Subtotal Calculation
     const subtotal = cartItems.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
 
-    // Remove Item Function
-    const removeItem = (id: number) => {
-        if (confirm('Are you sure you want to remove this item?')) {
-            router.delete(route('cart.destroy', id));
+    // Remove Item Logic
+    const confirmRemoveItem = (id: number) => {
+        setItemToDelete(id);
+        setShowDeleteModal(true);
+    };
+
+    const removeItem = () => {
+        if (itemToDelete) {
+            router.delete(route('cart.destroy', itemToDelete), {
+                onSuccess: () => {
+                    setShowDeleteModal(false);
+                    setItemToDelete(null);
+                }
+            });
         }
     };
 
     return (
-        // 👇 Navbar එක Layout එකෙන් එනවා
         <PublicLayout user={auth.user}>
             <Head title="Shopping Cart" />
 
@@ -43,7 +57,6 @@ export default function Cart({ cartItems, auth }: CartProps) {
                 <h1 className="text-3xl font-bold text-gray-900 mb-8">Shopping Cart</h1>
 
                 {cartItems.length === 0 ? (
-                    // --- Empty Cart State ---
                     <div className="text-center py-20 bg-white rounded-lg shadow-sm">
                         <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -58,26 +71,18 @@ export default function Cart({ cartItems, auth }: CartProps) {
                     </div>
                 ) : (
                     <div className="lg:grid lg:grid-cols-12 lg:gap-x-12 lg:items-start">
-
-                        {/* --- Cart Items List (Left Side) --- */}
                         <section className="lg:col-span-7">
                             <ul className="border-t border-b border-gray-200 divide-y divide-gray-200">
                                 {cartItems.map((item) => (
                                     <li key={item.id} className="flex py-6 sm:py-10">
-                                        {/* Image */}
                                         <div className="flex-shrink-0">
                                             {item.product.image ? (
-                                                <img
-                                                    src={`/storage/${item.product.image}`}
-                                                    alt={item.product.name}
-                                                    className="w-24 h-24 rounded-md object-center object-cover sm:w-32 sm:h-32"
-                                                />
+                                                <img src={`/storage/${item.product.image}`} alt={item.product.name} className="w-24 h-24 rounded-md object-center object-cover sm:w-32 sm:h-32" />
                                             ) : (
                                                 <div className="w-24 h-24 bg-gray-200 rounded-md flex items-center justify-center text-gray-400">No Img</div>
                                             )}
                                         </div>
 
-                                        {/* Details */}
                                         <div className="ml-4 flex-1 flex flex-col justify-between sm:ml-6">
                                             <div className="relative pr-9 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:pr-0">
                                                 <div>
@@ -89,12 +94,8 @@ export default function Cart({ cartItems, auth }: CartProps) {
                                                         </h3>
                                                     </div>
                                                     <div className="mt-1 flex text-sm">
-                                                        <p className="text-gray-500 border-r border-gray-200 pr-2 mr-2">
-                                                            {item.stock.color.name}
-                                                        </p>
-                                                        <p className="text-gray-500">
-                                                            {item.stock.size.code}
-                                                        </p>
+                                                        <p className="text-gray-500 border-r border-gray-200 pr-2 mr-2">{item.stock.color.name}</p>
+                                                        <p className="text-gray-500">{item.stock.size.code}</p>
                                                     </div>
                                                     <p className="mt-1 text-sm font-medium text-gray-900">Rs. {item.price}</p>
                                                 </div>
@@ -103,10 +104,9 @@ export default function Cart({ cartItems, auth }: CartProps) {
                                                     <label className="sr-only">Quantity</label>
                                                     <p className="text-sm text-gray-600">Qty: <span className="font-bold">{item.quantity}</span></p>
 
-                                                    {/* Remove Button */}
                                                     <div className="absolute top-0 right-0">
                                                         <button
-                                                            onClick={() => removeItem(item.id)}
+                                                            onClick={() => confirmRemoveItem(item.id)}
                                                             type="button"
                                                             className="-m-2 p-2 inline-flex text-gray-400 hover:text-gray-500"
                                                         >
@@ -124,10 +124,8 @@ export default function Cart({ cartItems, auth }: CartProps) {
                             </ul>
                         </section>
 
-                        {/* --- Order Summary (Right Side) --- */}
                         <section className="mt-16 bg-gray-100 rounded-lg px-4 py-6 sm:p-6 lg:p-8 lg:mt-0 lg:col-span-5">
                             <h2 id="summary-heading" className="text-lg font-medium text-gray-900">Order summary</h2>
-
                             <dl className="mt-6 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <dt className="text-sm text-gray-600">Subtotal</dt>
@@ -138,12 +136,8 @@ export default function Cart({ cartItems, auth }: CartProps) {
                                     <dd className="text-base font-medium text-gray-900">Rs. {subtotal.toFixed(2)}</dd>
                                 </div>
                             </dl>
-
                             <div className="mt-6">
-                                <Link
-                                    href={route('checkout.create')}
-                                    className="w-full bg-indigo-600 border border-transparent rounded-md shadow-sm py-3 px-4 text-base font-medium text-white hover:bg-indigo-700 block text-center"
-                                >
+                                <Link href={route('checkout.create')} className="w-full bg-indigo-600 border border-transparent rounded-md shadow-sm py-3 px-4 text-base font-medium text-white hover:bg-indigo-700 block text-center">
                                     Checkout
                                 </Link>
                             </div>
@@ -154,6 +148,20 @@ export default function Cart({ cartItems, auth }: CartProps) {
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900">Remove Item?</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Are you sure you want to remove this item from your cart?
+                    </p>
+                    <div className="mt-6 flex justify-end">
+                        <SecondaryButton onClick={() => setShowDeleteModal(false)}>Cancel</SecondaryButton>
+                        <DangerButton className="ml-3" onClick={removeItem}>Remove</DangerButton>
+                    </div>
+                </div>
+            </Modal>
         </PublicLayout>
     );
 }

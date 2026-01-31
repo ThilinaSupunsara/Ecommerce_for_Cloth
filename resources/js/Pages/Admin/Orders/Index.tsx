@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, Link } from '@inertiajs/react';
 import { PageProps } from '@/types';
+import Modal from '@/Components/Modal';
+import SecondaryButton from '@/Components/SecondaryButton';
+import DangerButton from '@/Components/DangerButton';
+import PrimaryButton from '@/Components/PrimaryButton';
 
 interface OrderItem {
     id: number;
@@ -42,21 +46,34 @@ interface Props extends PageProps {
 
 export default function AdminOrderIndex({ auth, orders }: Props) {
 
+    const [statusModalState, setStatusModalState] = useState<{ id: number, status: string } | null>(null);
+    const [paymentModalId, setPaymentModalId] = useState<number | null>(null);
+
     // Status වෙනස් කරන Function එක
-    const handleStatusChange = (orderId: number, newStatus: string) => {
-        if (confirm(`Are you sure you want to change status to ${newStatus}?`)) {
-            router.patch(route('admin.orders.update', orderId), {
-                status: newStatus
+    const initiateStatusChange = (orderId: number, newStatus: string) => {
+        setStatusModalState({ id: orderId, status: newStatus });
+    };
+
+    const confirmStatusChange = () => {
+        if (statusModalState) {
+            router.patch(route('admin.orders.update', statusModalState.id), {
+                status: statusModalState.status
             }, {
                 preserveScroll: true,
+                onSuccess: () => setStatusModalState(null)
             });
         }
     };
 
-    const togglePayment = (orderId: number) => {
-        if (confirm('Toggle payment status?')) {
-            router.patch(route('admin.orders.toggle_payment', orderId), {}, {
+    const initiatePaymentToggle = (orderId: number) => {
+        setPaymentModalId(orderId);
+    };
+
+    const confirmPaymentToggle = () => {
+        if (paymentModalId) {
+            router.patch(route('admin.orders.toggle_payment', paymentModalId), {}, {
                 preserveScroll: true,
+                onSuccess: () => setPaymentModalId(null)
             });
         }
     };
@@ -125,7 +142,7 @@ export default function AdminOrderIndex({ auth, orders }: Props) {
                                                     <div className="flex flex-col items-start gap-1">
                                                         <span className="text-xs text-gray-500 uppercase">{order.payment_method}</span>
                                                         <button
-                                                            onClick={() => togglePayment(order.id)}
+                                                            onClick={() => initiatePaymentToggle(order.id)}
                                                             className={`text-xs px-2 py-1 rounded border ${order.is_paid
                                                                 ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200'
                                                                 : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
@@ -142,7 +159,7 @@ export default function AdminOrderIndex({ auth, orders }: Props) {
                                                 <td className="px-4 py-4">
                                                     <select
                                                         value={order.status}
-                                                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                                                        onChange={(e) => initiateStatusChange(order.id, e.target.value)}
                                                         className={`text-xs font-semibold rounded-full px-3 py-1 border-0 cursor-pointer focus:ring-2 focus:ring-indigo-500 ${getStatusColor(order.status)}`}
                                                     >
                                                         <option value="pending">Pending</option>
@@ -183,6 +200,41 @@ export default function AdminOrderIndex({ auth, orders }: Props) {
                     </div>
                 </div>
             </div>
+
+            {/* Status Change Modal */}
+            <Modal show={statusModalState !== null} onClose={() => setStatusModalState(null)}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900">Change Order Status?</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Are you sure you want to change the status to <span className="font-bold">{statusModalState?.status}</span>?
+                        {statusModalState?.status === 'cancelled' && (
+                            <span className="block mt-2 text-red-600 font-bold">Warning: Stock will be restored!</span>
+                        )}
+                    </p>
+                    <div className="mt-6 flex justify-end">
+                        <SecondaryButton onClick={() => setStatusModalState(null)}>Cancel</SecondaryButton>
+                        <PrimaryButton className="ml-3" onClick={confirmStatusChange}>
+                            Confirm
+                        </PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Payment Toggle Modal */}
+            <Modal show={paymentModalId !== null} onClose={() => setPaymentModalId(null)}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900">Toggle Payment Status?</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Are you sure you want to change the payment status for this order?
+                    </p>
+                    <div className="mt-6 flex justify-end">
+                        <SecondaryButton onClick={() => setPaymentModalId(null)}>Cancel</SecondaryButton>
+                        <PrimaryButton className="ml-3" onClick={confirmPaymentToggle}>
+                            Confirm
+                        </PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

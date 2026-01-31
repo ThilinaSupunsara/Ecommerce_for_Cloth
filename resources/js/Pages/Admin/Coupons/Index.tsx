@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
+import Modal from '@/Components/Modal';
+import SecondaryButton from '@/Components/SecondaryButton';
+import DangerButton from '@/Components/DangerButton';
 
 interface Coupon {
     id: number;
@@ -27,6 +30,8 @@ export default function CouponIndex({ auth, coupons, errors }: Props) {
     });
 
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [couponToDelete, setCouponToDelete] = useState<number | null>(null);
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -39,9 +44,19 @@ export default function CouponIndex({ auth, coupons, errors }: Props) {
         });
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to delete this coupon?')) {
-            router.delete(route('admin.coupons.destroy', id));
+    const confirmDelete = (id: number) => {
+        setCouponToDelete(id);
+        setShowDeleteModal(true);
+    };
+
+    const handleDelete = () => {
+        if (couponToDelete) {
+            router.delete(route('admin.coupons.destroy', couponToDelete), {
+                onSuccess: () => {
+                    setShowDeleteModal(false);
+                    setCouponToDelete(null);
+                }
+            });
         }
     };
 
@@ -107,7 +122,7 @@ export default function CouponIndex({ auth, coupons, errors }: Props) {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                     <button
-                                                        onClick={() => handleDelete(coupon.id)}
+                                                        onClick={() => confirmDelete(coupon.id)}
                                                         className="text-red-600 hover:text-red-900 ml-4"
                                                     >
                                                         Delete
@@ -124,89 +139,86 @@ export default function CouponIndex({ auth, coupons, errors }: Props) {
             </div>
 
             {/* Create Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowCreateModal(false)}></div>
-
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-                        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                            <form onSubmit={submit}>
-                                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">Create New Coupon</h3>
-                                    <div className="mt-4 space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Code</label>
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                                value={data.code}
-                                                onChange={e => setData('code', e.target.value.toUpperCase())}
-                                                required
-                                            />
-                                            {errors.code && <p className="text-red-500 text-xs mt-1">{errors.code}</p>}
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Type</label>
-                                            <select
-                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                                value={data.type}
-                                                // @ts-ignore
-                                                onChange={e => setData('type', e.target.value)}
-                                            >
-                                                <option value="fixed">Fixed Amount (Rs.)</option>
-                                                <option value="percent">Percentage (%)</option>
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Value</label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                                value={data.value}
-                                                onChange={e => setData('value', e.target.value)}
-                                                required
-                                            />
-                                            {errors.value && <p className="text-red-500 text-xs mt-1">{errors.value}</p>}
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Expiry Date (Optional)</label>
-                                            <input
-                                                type="date"
-                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                                value={data.expiry_date}
-                                                onChange={e => setData('expiry_date', e.target.value)}
-                                            />
-                                            {errors.expiry_date && <p className="text-red-500 text-xs mt-1">{errors.expiry_date}</p>}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                    <button
-                                        type="submit"
-                                        disabled={processing}
-                                        className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
-                                    >
-                                        Create
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowCreateModal(false)}
-                                        className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
+            <Modal show={showCreateModal} onClose={() => setShowCreateModal(false)}>
+                <div className="p-6">
+                    <h3 className="text-lg font-medium text-gray-900" id="modal-title">Create New Coupon</h3>
+                    <form onSubmit={submit} className="mt-4 space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Code</label>
+                            <input
+                                type="text"
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                value={data.code}
+                                onChange={e => setData('code', e.target.value.toUpperCase())}
+                                required
+                            />
+                            {errors.code && <p className="text-red-500 text-xs mt-1">{errors.code}</p>}
                         </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Type</label>
+                            <select
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                value={data.type}
+                                // @ts-ignore
+                                onChange={e => setData('type', e.target.value)}
+                            >
+                                <option value="fixed">Fixed Amount (Rs.)</option>
+                                <option value="percent">Percentage (%)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Value</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                value={data.value}
+                                onChange={e => setData('value', e.target.value)}
+                                required
+                            />
+                            {errors.value && <p className="text-red-500 text-xs mt-1">{errors.value}</p>}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Expiry Date (Optional)</label>
+                            <input
+                                type="date"
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                value={data.expiry_date}
+                                onChange={e => setData('expiry_date', e.target.value)}
+                            />
+                            {errors.expiry_date && <p className="text-red-500 text-xs mt-1">{errors.expiry_date}</p>}
+                        </div>
+
+                        <div className="flex justify-end mt-6">
+                            <SecondaryButton onClick={() => setShowCreateModal(false)} className="mr-3">Cancel</SecondaryButton>
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:text-sm"
+                            >
+                                Create
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900">Delete Coupon?</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Are you sure you want to delete this coupon? This action cannot be undone.
+                    </p>
+                    <div className="mt-6 flex justify-end">
+                        <SecondaryButton onClick={() => setShowDeleteModal(false)}>Cancel</SecondaryButton>
+                        <DangerButton className="ml-3" onClick={handleDelete}>Delete</DangerButton>
                     </div>
                 </div>
-            )}
+            </Modal>
         </AuthenticatedLayout>
     );
 }

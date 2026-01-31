@@ -76,19 +76,9 @@ class CheckoutController extends Controller
     }
 
     // 2. Order එක Database එකට දැමීම (Store)
-    public function store(Request $request)
+    public function store(\App\Http\Requests\StoreOrderRequest $request)
     {
-        $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|email',
-            'phone' => 'required|string|max:20',
-            'address' => 'required|string',
-            'city' => 'required|string',
-            'postal_code' => 'nullable|string',
-            'payment_method' => 'required|in:cod,card',
-            'coupon_code' => 'nullable|string|exists:coupons,code', // Validate coupon if present
-        ]);
+        // Validation handled by StoreOrderRequest
 
         try {
             // $stripeSessionUrl variable එක හදාගන්නවා
@@ -314,10 +304,21 @@ class CheckoutController extends Controller
     // 4. Payment Cancel (සල්ලි නොගෙවා Cancel කළොත්)
     public function cancel(Request $request)
     {
-        $order = Order::findOrFail($request->order_id);
+        $order = Order::with('items')->findOrFail($request->order_id);
+
+        if ($order->status === 'cancelled') {
+            return redirect()->route('cart.index')->with('error', 'Order is already cancelled.');
+        }
+
+        // Restore Stock
+        foreach ($order->items as $item) {
+            $stock = ProductStock::find($item->stock_id);
+            if ($stock) {
+                $stock->increment('quantity', $item->quantity);
+            }
+        }
 
         // Order එක Cancel ලෙස මාර්ක් කරනවා
-        // (අවශ්‍ය නම් Stock එක ආපහු වැඩි කරන Logic එකක් මෙතන ලියන්න පුළුවන්)
         $order->update(['status' => 'cancelled']);
 
         return redirect()->route('cart.index')->with('error', 'Payment was cancelled.');

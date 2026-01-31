@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { PageProps } from '@/types';
+import Modal from '@/Components/Modal';
+import SecondaryButton from '@/Components/SecondaryButton';
+import PrimaryButton from '@/Components/PrimaryButton';
 
 interface OrderItem {
     id: number;
@@ -36,15 +39,23 @@ interface Props extends PageProps {
 
 export default function AdminOrderShow({ auth, order }: Props) {
 
-    const handleStatusChange = (newStatus: string) => {
-        if (confirm(`Change status to ${newStatus}?`)) {
-            router.patch(route('admin.orders.update', order.id), { status: newStatus });
+    const [statusModalState, setStatusModalState] = useState<string | null>(null);
+
+    const initiateStatusChange = (newStatus: string) => {
+        setStatusModalState(newStatus);
+    };
+
+    const confirmStatusChange = () => {
+        if (statusModalState) {
+            router.patch(route('admin.orders.update', order.id), { status: statusModalState }, {
+                onSuccess: () => setStatusModalState(null)
+            });
         }
     };
 
     return (
         <AuthenticatedLayout
-           
+
             header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Order Details #{order.id}</h2>}
         >
             <Head title={`Order #${order.id}`} />
@@ -74,7 +85,7 @@ export default function AdminOrderShow({ auth, order }: Props) {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Current Status</label>
                                     <select
                                         value={order.status}
-                                        onChange={(e) => handleStatusChange(e.target.value)}
+                                        onChange={(e) => initiateStatusChange(e.target.value)}
                                         className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     >
                                         <option value="pending">Pending</option>
@@ -134,7 +145,7 @@ export default function AdminOrderShow({ auth, order }: Props) {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    Color: {item.color_name} <br/> Size: {item.size_name}
+                                                    Color: {item.color_name} <br /> Size: {item.size_name}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                     Rs. {item.price}
@@ -173,6 +184,23 @@ export default function AdminOrderShow({ auth, order }: Props) {
                     </div>
                 </div>
             </div>
+
+            {/* Status Confirmation Modal */}
+            <Modal show={statusModalState !== null} onClose={() => setStatusModalState(null)}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900">Change Status?</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Are you sure you want to change this order's status to <span className="font-bold">{statusModalState}</span>?
+                        {statusModalState === 'cancelled' && (
+                            <span className="block mt-2 text-red-600 font-bold">Warning: Stock will be restored!</span>
+                        )}
+                    </p>
+                    <div className="mt-6 flex justify-end">
+                        <SecondaryButton onClick={() => setStatusModalState(null)}>Cancel</SecondaryButton>
+                        <PrimaryButton className="ml-3" onClick={confirmStatusChange}>Confirm</PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
 import PrimaryButton from '@/Components/PrimaryButton';
 import DangerButton from '@/Components/DangerButton';
+import SecondaryButton from '@/Components/SecondaryButton';
+import Modal from '@/Components/Modal';
 
 interface WishlistItem {
     id: number;
@@ -17,9 +19,22 @@ interface WishlistItem {
 
 export default function Wishlist({ wishlistItems, auth }: { wishlistItems: WishlistItem[], auth: any }) {
 
-    const removeFromWishlist = (id: number) => {
-        if (confirm('Remove this item from wishlist?')) {
-            router.delete(route('wishlist.destroy', id));
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+
+    const confirmRemove = (id: number) => {
+        setItemToDelete(id);
+        setShowDeleteModal(true);
+    };
+
+    const removeFromWishlist = () => {
+        if (itemToDelete) {
+            router.delete(route('wishlist.destroy', itemToDelete), {
+                onSuccess: () => {
+                    setShowDeleteModal(false);
+                    setItemToDelete(null);
+                }
+            });
         }
     };
 
@@ -72,7 +87,7 @@ export default function Wishlist({ wishlistItems, auth }: { wishlistItems: Wishl
                                             View Product
                                         </Link>
                                         <button
-                                            onClick={() => removeFromWishlist(item.id)}
+                                            onClick={() => confirmRemove(item.id)}
                                             className="text-red-600 hover:text-red-800 text-sm font-medium z-10"
                                         >
                                             Remove
@@ -84,6 +99,20 @@ export default function Wishlist({ wishlistItems, auth }: { wishlistItems: Wishl
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900">Remove from Wishlist?</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Are you sure you want to remove this item?
+                    </p>
+                    <div className="mt-6 flex justify-end">
+                        <SecondaryButton onClick={() => setShowDeleteModal(false)}>Cancel</SecondaryButton>
+                        <DangerButton className="ml-3" onClick={removeFromWishlist}>Remove</DangerButton>
+                    </div>
+                </div>
+            </Modal>
         </PublicLayout>
     );
 }
