@@ -29,6 +29,8 @@ interface Order {
     address: string;
     city: string;
     phone: string;
+    is_paid: boolean;
+    payment_method: string;
 }
 
 interface Props extends PageProps {
@@ -51,9 +53,17 @@ export default function AdminOrderIndex({ auth, orders }: Props) {
         }
     };
 
+    const togglePayment = (orderId: number) => {
+        if (confirm('Toggle payment status?')) {
+            router.patch(route('admin.orders.toggle_payment', orderId), {}, {
+                preserveScroll: true,
+            });
+        }
+    };
+
     // Status Colors
     const getStatusColor = (status: string) => {
-        switch(status) {
+        switch (status) {
             case 'pending': return 'bg-yellow-100 text-yellow-800';
             case 'processing': return 'bg-blue-100 text-blue-800';
             case 'shipped': return 'bg-purple-100 text-purple-800';
@@ -84,6 +94,7 @@ export default function AdminOrderIndex({ auth, orders }: Props) {
                                             <th className="px-4 py-3 text-left font-medium text-gray-500">Customer</th>
                                             <th className="px-4 py-3 text-left font-medium text-gray-500">Items</th>
                                             <th className="px-4 py-3 text-left font-medium text-gray-500">Total</th>
+                                            <th className="px-4 py-3 text-left font-medium text-gray-500">Payment</th>
                                             <th className="px-4 py-3 text-left font-medium text-gray-500">Date</th>
                                             <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
                                             <th className="px-4 py-3 text-right font-medium text-gray-500">Action</th>
@@ -109,6 +120,21 @@ export default function AdminOrderIndex({ auth, orders }: Props) {
                                                 </td>
                                                 <td className="px-4 py-4 font-bold text-gray-900">
                                                     Rs. {order.total_price}
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <div className="flex flex-col items-start gap-1">
+                                                        <span className="text-xs text-gray-500 uppercase">{order.payment_method}</span>
+                                                        <button
+                                                            onClick={() => togglePayment(order.id)}
+                                                            className={`text-xs px-2 py-1 rounded border ${order.is_paid
+                                                                ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200'
+                                                                : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
+                                                                }`}
+                                                            title="Click to toggle"
+                                                        >
+                                                            {order.is_paid ? 'PAID ✅' : 'UNPAID ❌'}
+                                                        </button>
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-4 text-gray-500">
                                                     {new Date(order.created_at).toLocaleDateString()}

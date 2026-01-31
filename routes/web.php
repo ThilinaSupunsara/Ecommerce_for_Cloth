@@ -27,7 +27,14 @@ use Inertia\Inertia;
         'phpVersion' => PHP_VERSION,
     ]);
 });*/
+
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// Social Auth Routes
+Route::get('auth/google', [\App\Http\Controllers\Auth\SocialAuthController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('auth/google/callback', [\App\Http\Controllers\Auth\SocialAuthController::class, 'handleGoogleCallback']);
+
+Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
 
 Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
 
@@ -67,6 +74,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/wishlist', [\App\Http\Controllers\WishlistController::class, 'index'])->name('wishlist.index');
     Route::post('/wishlist', [\App\Http\Controllers\WishlistController::class, 'store'])->name('wishlist.store');
     Route::delete('/wishlist/{wishlist}', [\App\Http\Controllers\WishlistController::class, 'destroy'])->name('wishlist.destroy');
+
+    // Return Request
+    Route::post('/return-request', [\App\Http\Controllers\ReturnController::class, 'store'])->name('return.store');
 });
 
 
@@ -98,6 +108,7 @@ Route::prefix('admin')
 
             Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
             Route::patch('/orders/{order}', [OrderController::class, 'update'])->name('orders.update');
+            Route::patch('/orders/{order}/payment', [OrderController::class, 'togglePaymentStatus'])->name('orders.toggle_payment');
             Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
 
             // Reports
@@ -125,6 +136,11 @@ Route::prefix('admin')
 
             // Notifications
             Route::get('/notifications/{id}/read', [\App\Http\Controllers\Admin\NotificationController::class, 'markAsRead'])->name('notifications.read');
+
+            // Returns Management
+            Route::get('/returns', [\App\Http\Controllers\Admin\ReturnController::class, 'index'])->name('returns.index');
+            Route::put('/returns/{returnRequest}', [\App\Http\Controllers\Admin\ReturnController::class, 'update'])->name('returns.update');
+            Route::post('/returns/{returnRequest}/refund', [\App\Http\Controllers\Admin\ReturnController::class, 'refund'])->name('returns.refund');
 
             Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 

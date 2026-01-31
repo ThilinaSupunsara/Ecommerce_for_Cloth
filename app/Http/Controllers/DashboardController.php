@@ -61,7 +61,7 @@ class DashboardController extends Controller
             ]);
 
         } else {
-            $orders = Order::with('items.product')
+            $orders = Order::with(['items.product', 'returnRequest'])
                 ->where('user_id', $user->id)
                 ->latest()
                 ->get();

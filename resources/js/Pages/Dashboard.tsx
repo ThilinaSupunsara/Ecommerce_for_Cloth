@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import PublicLayout from '@/Layouts/PublicLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
+
 import { PageProps } from '@/types';
 import ReviewForm from '@/Components/ReviewForm';
 import Modal from '@/Components/Modal';
@@ -20,13 +21,68 @@ interface Order {
     id: number;
     created_at: string;
     status: string;
+
     total_price: string;
     items: OrderItem[];
+    return_request: {
+        id: number;
+        status: 'pending' | 'approved' | 'rejected' | 'refunded';
+        reason: string;
+        admin_response: string | null;
+        created_at: string; // Added date
+    } | null;
 }
 
 interface DashboardProps extends PageProps {
     orders: Order[];
 }
+
+// --- Return Progress Bar Component ---
+const ReturnProgressBar = ({ status }: { status: string }) => {
+    // Determine steps based on status path
+    // Path 1: Pending -> Approved -> Refunded
+    // Path 2: Pending -> Rejected
+    const isRejected = status === 'rejected';
+
+    const steps = isRejected
+        ? ['pending', 'rejected']
+        : ['pending', 'approved', 'refunded'];
+
+    const currentStepIndex = steps.indexOf(status);
+
+    return (
+        <div className="w-full mt-2">
+            <div className="relative flex items-center justify-between">
+                <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 -z-10"></div>
+                <div
+                    className={`absolute left-0 top-1/2 transform -translate-y-1/2 h-1 -z-10 transition-all duration-500 ${isRejected ? 'bg-red-500' : 'bg-green-500'}`}
+                    style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                ></div>
+
+                {steps.map((step, index) => {
+                    const isCompleted = index <= currentStepIndex;
+                    const isCurrent = index === currentStepIndex;
+
+                    let activeColor = isRejected ? 'bg-red-600' : 'bg-green-600';
+                    let textColor = isRejected ? 'text-red-700' : 'text-green-700';
+
+                    return (
+                        <div key={step} className="flex flex-col items-center">
+                            <div className={`w-3 h-3 rounded-full flex items-center justify-center ${isCompleted ? activeColor : 'bg-gray-300'}`}>
+                            </div>
+                            <span className={`text-[10px] mt-1 capitalize ${isCurrent ? `font-bold ${textColor}` : 'text-gray-500'}`}>
+                                {step}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+            {isRejected && (
+                <p className="text-xs text-red-600 text-center mt-1 font-medium">Return request was rejected.</p>
+            )}
+        </div>
+    );
+};
 
 // --- Order Progress Bar Component ---
 const OrderProgressBar = ({ status }: { status: string }) => {
@@ -121,6 +177,7 @@ export default function Dashboard({ auth, orders }: DashboardProps) {
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">Status</th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Return / Exchange</th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
@@ -144,11 +201,35 @@ export default function Dashboard({ auth, orders }: DashboardProps) {
                                                                 <li key={item.id} className="flex justify-between items-center mb-2">
                                                                     <span>{item.product_name} ({item.color_name}, {item.size_name}) x {item.quantity}</span>
                                                                     {order.status === 'completed' && (
-                                                                        <ReviewButton productId={item.product_id} />
+                                                                        <div className="flex space-x-2">
+                                                                            <ReviewButton productId={item.product_id} />
+                                                                        </div>
                                                                     )}
                                                                 </li>
                                                             ))}
                                                         </ul>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        {order.return_request ? (
+                                                            <div className="w-full max-w-[180px] ml-auto">
+                                                                <ReturnProgressBar status={order.return_request.status} />
+
+                                                                <div className="bg-gray-50 rounded p-2 mt-2 text-left border border-gray-100">
+                                                                    <p className="text-[10px] text-gray-500 font-semibold uppercase">Your Reason:</p>
+                                                                    <p className="text-xs text-gray-700 truncate" title={order.return_request.reason}>"{order.return_request.reason}"</p>
+
+                                                                    {order.return_request.admin_response && (
+                                                                        <>
+                                                                            <div className="h-px bg-gray-200 my-1"></div>
+                                                                            <p className="text-[10px] text-indigo-600 font-semibold uppercase">Admin Response:</p>
+                                                                            <p className="text-xs text-gray-800">{order.return_request.admin_response}</p>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ) : order.status === 'completed' && (
+                                                            <ReturnButton orderId={order.id} />
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -186,6 +267,90 @@ const ReviewButton = ({ productId }: { productId: number }) => {
                     >
                         Cancel
                     </button>
+                </div>
+            </Modal>
+        </>
+    );
+
+};
+
+const ReturnButton = ({ orderId }: { orderId: number }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const { data, setData, post, processing, errors, reset } = useForm({
+        order_id: orderId,
+        reason: '',
+    });
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(route('return.store'), {
+            onSuccess: () => {
+                setIsOpen(false);
+                reset();
+            },
+        });
+    };
+
+    return (
+        <>
+            <button
+                onClick={() => setIsOpen(true)}
+                className="text-xs border border-red-200 text-red-700 px-3 py-1 rounded hover:bg-red-50 transition"
+            >
+                Request Return
+            </button>
+
+            <Modal show={isOpen} onClose={() => setIsOpen(false)}>
+                <div className="p-6">
+                    <div className="text-center mb-6">
+                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                            <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z"></path>
+                            </svg>
+                        </div>
+                        <h3 className="text-lg leading-6 font-bold text-gray-900">Request Return / Exchange</h3>
+                        <p className="text-sm text-gray-500 mt-2">
+                            Unhappy with your purchase? You can request a return or exchange within 7 days of delivery.
+                        </p>
+                    </div>
+
+                    <form onSubmit={submit}>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Why do you want to return this?</label>
+                            <textarea
+                                value={data.reason}
+                                onChange={(e) => setData('reason', e.target.value)}
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                rows={4}
+                                required
+                                placeholder="E.g., I received the wrong size, Item is damaged, Color doesn't match..."
+                            ></textarea>
+                            {errors.reason && <p className="text-red-500 text-sm mt-1">{errors.reason}</p>}
+                        </div>
+
+                        <div className="bg-yellow-50 p-3 rounded-md mb-4 border border-yellow-200">
+                            <p className="text-xs text-yellow-800">
+                                <strong>Note:</strong> Refunds are processed to your original payment method. Exchanges depend on stock availability.
+                            </p>
+                        </div>
+
+                        <div className="flex justify-end space-x-2 mt-6">
+                            <button
+                                type="button"
+                                onClick={() => setIsOpen(false)}
+                                className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition text-sm font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm font-medium shadow-sm disabled:opacity-50"
+                            >
+                                {processing ? 'Submitting Request...' : 'Submit Request'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </Modal>
         </>

@@ -23,7 +23,11 @@ class Order extends Model
         'payment_method',
         'is_paid',
         'coupon_code',
-        'discount_amount'
+        'coupon_code',
+        'discount_amount',
+        'is_paid',
+        'delivery_fee',
+        'stripe_payment_id',
     ];
 
 
@@ -36,5 +40,10 @@ class Order extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function returnRequest()
+    {
+        return $this->hasOne(ReturnRequest::class);
     }
 }

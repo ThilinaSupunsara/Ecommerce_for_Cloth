@@ -275,10 +275,24 @@ class CheckoutController extends Controller
         // (! $order->is_paid කියන්නේ is_paid == false ද කියල බලන එක)
         if (!$order->is_paid) {
 
+            $stripePaymentId = null;
+
+            // Retrieve Stripe Session to get Payment Intent
+            if ($request->session_id) {
+                try {
+                    \Stripe\Stripe::setApiKey(env('STRIPE_SECRET'));
+                    $session = \Stripe\Checkout\Session::retrieve($request->session_id);
+                    $stripePaymentId = $session->payment_intent;
+                } catch (\Exception $e) {
+                    // Log error or ignore
+                }
+            }
+
             // Status වෙනස් කිරීම
             $order->update([
                 'is_paid' => 1,
-                'status' => 'processing'
+                'status' => 'processing',
+                'stripe_payment_id' => $stripePaymentId
             ]);
 
             // Cart එක හිස් කිරීම (DB Query එකකින් මකන එක වඩා ෂුවර්)

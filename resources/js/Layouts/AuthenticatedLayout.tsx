@@ -88,6 +88,15 @@ export default function Authenticated({
                         My Wishlist
                     </Link>
 
+                    {/* Returns Link */}
+                    <Link
+                        href={route('admin.returns.index')}
+                        className={`block px-4 py-2 rounded transition ${route().current('admin.returns.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                            }`}
+                    >
+                        Returns
+                    </Link>
+
                     {/* Settings Link */}
                     <Link
                         href={route('admin.settings.index')}
@@ -227,6 +236,9 @@ export default function Authenticated({
                         </Link>
                         <Link href={route('admin.products.index')} className="block py-2 text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 rounded">
                             Products
+                        </Link>
+                        <Link href={route('admin.returns.index')} className="block py-2 text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 rounded">
+                            Returns
                         </Link>
                     </div>
                     {/* Mobile User Info */}
