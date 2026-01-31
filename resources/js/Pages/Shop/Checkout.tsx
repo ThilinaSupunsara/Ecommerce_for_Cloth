@@ -25,6 +25,7 @@ interface CheckoutProps extends PageProps {
     cartItems: CartItem[];
     total: number;
     discount?: number;
+    deliveryFee: number; // Added
     coupon?: Coupon;
     user: { name: string; email: string; };
     flash: { success?: string; error?: string };
@@ -33,7 +34,7 @@ interface CheckoutProps extends PageProps {
 
 import axios from 'axios'; // Add axios
 
-export default function Checkout({ cartItems, total, user, flash, auth }: CheckoutProps) {
+export default function Checkout({ cartItems, total, deliveryFee, user, flash, auth }: CheckoutProps) {
     const { data, setData, post, processing, errors } = useForm({
         first_name: user?.name?.split(' ')[0] || '',
         last_name: user?.name?.split(' ')[1] || '',
@@ -96,7 +97,7 @@ export default function Checkout({ cartItems, total, user, flash, auth }: Checko
         setCouponError('');
     };
 
-    const finalTotal = Math.max(0, total - discountAmount);
+    const finalTotal = Math.max(0, total - discountAmount) + deliveryFee;
 
     // Fallback for user if undefined (though it should be protected by middleware)
     const currentUser = auth?.user || user;
@@ -287,6 +288,10 @@ export default function Checkout({ cartItems, total, user, flash, auth }: Checko
                                         <dd className="font-medium">- Rs. {(discountAmount).toFixed(2)}</dd>
                                     </div>
                                 )}
+                                <div className="flex justify-between py-1 text-gray-600">
+                                    <dt>Delivery Fee</dt>
+                                    <dd className="font-medium">Rs. {(deliveryFee || 0).toFixed(2)}</dd>
+                                </div>
                                 <div className="flex justify-between py-1 border-t border-gray-200 mt-2 font-bold text-lg">
                                     <dt>Total</dt>
                                     <dd className="text-indigo-600">Rs. {(finalTotal || 0).toFixed(2)}</dd>

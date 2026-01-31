@@ -88,6 +88,15 @@ export default function Authenticated({
                         My Wishlist
                     </Link>
 
+                    {/* Settings Link */}
+                    <Link
+                        href={route('admin.settings.index')}
+                        className={`block px-4 py-2 rounded transition ${route().current('admin.settings.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                            }`}
+                    >
+                        Settings
+                    </Link>
+
                     {/* Divider & Shop Link */}
                     <div className="pt-4 mt-4 border-t border-gray-700">
                         <Link href="/" className="block px-4 py-2 rounded text-gray-400 hover:bg-gray-800 hover:text-white transition">

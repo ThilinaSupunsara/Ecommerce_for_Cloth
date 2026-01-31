@@ -36,9 +36,13 @@ class CheckoutController extends Controller
         // No session coupon usage here anymore
         // $coupon = session('coupon'); ...
 
+        // Fetch Delivery Fee
+        $deliveryFee = \App\Models\Setting::get('delivery_fee', 0);
+
         return Inertia::render('Shop/Checkout', [
             'cartItems' => $cartItems,
             'total' => $total,
+            'deliveryFee' => (float) $deliveryFee, // Pass to view
             'user' => Auth::user()
         ]);
     }
@@ -105,6 +109,8 @@ class CheckoutController extends Controller
                     return $item->price * $item->quantity;
                 });
 
+                $deliveryFee = (float) \App\Models\Setting::get('delivery_fee', 0);
+
                 $discountAmount = 0;
                 $couponCode = null;
 
@@ -125,8 +131,8 @@ class CheckoutController extends Controller
                 }
 
                 // ... rest of calculation ...
-
-                $finalTotal = max(0, $subTotal - $discountAmount);
+                // Calculate Final Total: Subtotal - Discount + Delivery Fee
+                $finalTotal = max(0, $subTotal - $discountAmount) + $deliveryFee;
 
                 // --- Order එක හදනවා (Pending විදියට) ---
                 $order = Order::create([
@@ -140,6 +146,7 @@ class CheckoutController extends Controller
                     'postal_code' => $request->postal_code,
                     'total_price' => $finalTotal,
                     'discount_amount' => $discountAmount,
+                    'delivery_fee' => $deliveryFee, // Save Delivery Fee
                     'coupon_code' => $couponCode,
                     'status' => 'pending',
                     'payment_method' => $request->payment_method,

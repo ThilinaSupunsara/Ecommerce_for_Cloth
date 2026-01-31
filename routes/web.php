@@ -119,6 +119,10 @@ Route::prefix('admin')
             Route::delete('/flash-sales/{flashSale}', [\App\Http\Controllers\Admin\FlashSaleController::class, 'destroy'])->name('flash_sales.destroy');
             Route::post('/flash-sales/{flashSale}/toggle', [\App\Http\Controllers\Admin\FlashSaleController::class, 'toggle'])->name('flash_sales.toggle');
 
+            // Settings
+            Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
+            Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
+
             // Notifications
             Route::get('/notifications/{id}/read', [\App\Http\Controllers\Admin\NotificationController::class, 'markAsRead'])->name('notifications.read');
 

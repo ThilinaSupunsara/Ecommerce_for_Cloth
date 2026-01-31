@@ -20,6 +20,12 @@ interface Props extends PageProps {
 
 export default function FlashSalesIndex({ auth, flashSales, products }: Props) {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState(''); // New State for Search
+
+    // Computed Filtered Products
+    const filteredProducts = products.filter(product =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     // Form for Creating Flash Sale
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -173,24 +179,73 @@ export default function FlashSalesIndex({ auth, flashSales, products }: Props) {
                             </div>
                         </div>
 
+                        {/* Improved Product Selector */}
                         <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Select Products (Optional - Hold Ctrl/Cmd to select multiple)</label>
-                            <select
-                                multiple
-                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-40"
-                                value={data.products}
-                                onChange={(e) => {
-                                    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-                                    setData('products', selectedOptions);
-                                }}
-                            >
-                                {products.map((product) => (
-                                    <option key={product.id} value={product.id}>
-                                        {product.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <p className="text-xs text-gray-500 mt-1">If no products are selected, the sale applies to ALL products (if logical, otherwise select specific items).</p>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Select Products (Optional)</label>
+
+                            {/* Search Box */}
+                            <div className="mb-2">
+                                <input
+                                    type="text"
+                                    placeholder="Search products..."
+                                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Selection Stats */}
+                            <div className="flex justify-between items-center mb-2 text-xs text-gray-500">
+                                <span>{data.products.length} products selected</span>
+                                <div>
+                                    <button
+                                        type="button"
+                                        className="text-indigo-600 hover:text-indigo-800 mr-3"
+                                        onClick={() => setData('products', products.map(p => p.id.toString()))}
+                                    >
+                                        Select All
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="text-gray-600 hover:text-gray-800"
+                                        onClick={() => setData('products', [])}
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Scrollable Checkbox List */}
+                            <div className="h-60 overflow-y-auto border border-gray-300 rounded-md p-2 bg-gray-50">
+                                {filteredProducts.length > 0 ? (
+                                    filteredProducts.map((product) => (
+                                        <div key={product.id} className="flex items-center mb-2 p-2 hover:bg-white rounded transition">
+                                            <input
+                                                id={`product-${product.id}`}
+                                                type="checkbox"
+                                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                                checked={data.products.includes(product.id.toString())}
+                                                onChange={(e) => {
+                                                    const id = product.id.toString();
+                                                    if (e.target.checked) {
+                                                        setData('products', [...data.products, id]);
+                                                    } else {
+                                                        setData('products', data.products.filter(item => item !== id));
+                                                    }
+                                                }}
+                                            />
+                                            <label htmlFor={`product-${product.id}`} className="ml-2 block text-sm text-gray-900 cursor-pointer w-full">
+                                                {product.name}
+                                            </label>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center text-gray-500 py-4 text-sm">
+                                        No products found.
+                                    </div>
+                                )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">If no products are selected, the sale applies to ALL products site-wide.</p>
                         </div>
 
                         <div className="flex justify-end mt-6">
